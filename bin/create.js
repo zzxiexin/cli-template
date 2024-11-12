@@ -1,10 +1,10 @@
-let spinner = null;
 const { program } = require("commander");
 const inquirer = require("inquirer").default;
+const copy = require("fs-extra");
 const { template } = require("./template");
 const fs = require("fs");
 const path = require("path");
-const copy = require("fs-extra");
+let spinner = null;
 
 const create = () => {
   program
@@ -28,7 +28,6 @@ const create = () => {
         .then((answers) => {
           const source = path.join(__dirname, template?.[answers?.index]);
           const lastDestination = path.join(process.cwd(), destination);
-          console.log("lastDestination", lastDestination);
           if (fs.existsSync(destination)) {
             console.error(`${destination}文件夹已经存在, 请重新更换文件夹名称`);
             process.exit(1);
