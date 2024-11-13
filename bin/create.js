@@ -48,31 +48,39 @@ const createDestination = async ({ destination, answers }) => {
       fs.mkdirSync(destination, { recursive: true });
       if (answers.isRemote === "local") {
         source = path.join(__dirname, local_template?.[answers?.index]);
-        copy(source, finalDestination, {
-          filter: (src, dest) => {
-            // 复制所有文件（包括 . 开头的文件）
-            return true;
-          },
-        })
-          .then(() => {
-            spinner.succeed(chalk.green("拉取成功"));
+        try {
+          copy(source, finalDestination, {
+            filter: (src, dest) => {
+              // 复制所有文件（包括 . 开头的文件）
+              return true;
+            },
           })
-          .catch((err) => {
-            spinner.fail(chalk.red("拉取失败"));
-          });
-      } else {
-        download(
-          remote_template?.[answers?.index],
-          finalDestination,
-          { clone: true },
-          (err) => {
-            if (err) {
-              spinner.fail(chalk.red("拉取失败"));
-            } else {
+            .then(() => {
               spinner.succeed(chalk.green("拉取成功"));
+            })
+            .catch((err) => {
+              spinner.fail(chalk.red("拉取失败"));
+            });
+        } catch (err) {
+          spinner.fail(chalk.red("拉取失败"));
+        }
+      } else {
+        try {
+          download(
+            remote_template?.[answers?.index],
+            finalDestination,
+            { clone: true },
+            (err) => {
+              if (err) {
+                spinner.fail(chalk.red("拉取失败"));
+              } else {
+                spinner.succeed(chalk.green("拉取成功"));
+              }
             }
-          }
-        );
+          );
+        } catch (err) {
+          spinner.fail(chalk.red("拉取失败"));
+        }
       }
     } catch (error) {
       console.log(error);
