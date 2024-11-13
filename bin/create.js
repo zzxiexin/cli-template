@@ -6,6 +6,7 @@ const fs = require("fs");
 const path = require("path");
 const shell = require("shelljs");
 const download = require("download-git-repo");
+let chalk = null;
 let spinner = null;
 
 const create = async () => {
@@ -82,6 +83,9 @@ const create = async () => {
                 spinner = ora.default("正在拉取").start();
                 // 使用 spinner 继续你的逻辑
               });
+              import("chalk").then((chalk) => {
+                chalk = chalk.default;
+              })
               fs.mkdirSync(destination, { recursive: true });
               if (answers.isRemote === "local") {
                 source = path.join(__dirname, local_template?.[answers?.index])
@@ -92,7 +96,8 @@ const create = async () => {
                   },
                 })
                   .then(() => {
-                    spinner.succeed("拉取成功");
+                    console.log(err, chalk.red("拉取成功"));
+                    // spinner.succeed("拉取成功");
                   })
                   .catch((err) => {
                     console.log(err);
@@ -101,9 +106,11 @@ const create = async () => {
               } else {
                 download(remote_template?.[answers?.index], destination, { clone: true }, (err) => {
                   if (err) {
-                    spinner.error('拉取失败', err);
+                    console.error(err);
+                    spinner.error("拉取失败")
                   } else {
-                    spinner.succeed('拉取成功');
+                    console.log(err, chalk.red("拉取成功"));
+                    // spinner.succeed('拉取成功');
                   }
                 });
               }
