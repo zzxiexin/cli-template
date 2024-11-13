@@ -6,8 +6,99 @@ const fs = require("fs");
 const path = require("path");
 const shell = require("shelljs");
 const download = require("download-git-repo");
-let chalk = null;
 let spinner = null;
+
+const handleExistDestination = async ({ destination }) => {
+  const finalDestination = path.join(process.cwd(), destination);
+  if (fs.existsSync(finalDestination)) {
+    const { isCover } = await inquirer.prompt([
+      {
+        type: "list",
+        message: `${finalDestination}文件夹已经存在, 是否覆盖`,
+        name: "isCover",
+        default: true,
+        choices: [
+          { name: "是", value: true },
+          { name: "否", value: false },
+        ],
+      },
+    ]);
+    if (!isCover) {
+      return;
+    } else {
+      await remove(finalDestination);
+    }
+  }
+};
+
+const createDestination = async ({ destination, answers }) => {
+  let source = null;
+  let chalk = null;
+  const finalDestination = path.join(process.cwd(), destination);
+  // 如果目标文件夹不存在，创建它
+  if (!fs.existsSync(finalDestination)) {
+    try {
+      import("ora").then((ora) => {
+        spinner = ora.default("正在拉取").start();
+        // 使用 spinner 继续你的逻辑
+      });
+      import("chalk").then((res) => {
+        chalk = res.default;
+      });
+      fs.mkdirSync(destination, { recursive: true });
+      if (answers.isRemote === "local") {
+        source = path.join(__dirname, local_template?.[answers?.index]);
+        copy(source, finalDestination, {
+          filter: (src, dest) => {
+            // 复制所有文件（包括 . 开头的文件）
+            return true;
+          },
+        })
+          .then(() => {
+            spinner.succeed(chalk.green("拉取成功"));
+          })
+          .catch((err) => {
+            spinner.fail(chalk.red("拉取失败"));
+          });
+      } else {
+        download(
+          remote_template?.[answers?.index],
+          finalDestination,
+          { clone: true },
+          (err) => {
+            if (err) {
+              spinner.fail(chalk.red("拉取失败"));
+            } else {
+              spinner.succeed(chalk.green("拉取成功"));
+            }
+          }
+        );
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  }
+};
+
+const installDependice = async ({ answers, destination }) => {
+  const finalDestination = path.join(process.cwd(), destination);
+  if (answers.isInstall) {
+    const installType = answers.installType;
+    // 使用 shelljs 进入文件夹并执行命令
+    if (shell.cd(finalDestination).code === 0) {
+      // 如果进入文件夹成功，执行其他命令
+      shell.exec(`${installType} install`, (code, stdout, stderr) => {
+        if (code === 0) {
+          console.log("安装成功:", stdout);
+        } else {
+          console.error("安装失败:", stderr);
+        }
+      });
+    } else {
+      console.error("无法进入文件夹:", finalDestination);
+    }
+  }
+};
 
 const create = async () => {
   program
@@ -21,18 +112,12 @@ const create = async () => {
             type: "list",
             name: "index",
             default: 0,
-            message: "请选择你需要的技术栈？",
+            message: "请选择你需要的技术栈",
             choices: [
               { name: "react+router+vite+jotai", value: 0 },
               { name: "test", value: 1 },
             ],
           },
-          // {
-          //   type: "confirm",
-          //   message: "是否安装依赖",
-          //   name: "isInstall",
-          //   default: true,
-          // },
           {
             type: "list",
             name: "isRemote",
@@ -56,86 +141,17 @@ const create = async () => {
             choices: ["pnpm", "yarn", "npm"],
             default: true,
             when: (answers) => answers.isInstall,
-          }
+          },
         ])
         .then(async (answers) => {
-          let source = null;
-          const lastDestination = path.join(process.cwd(), destination);
-          if (fs.existsSync(destination)) {
-            const { isCover } = await inquirer.prompt([{
-              type: "list",
-              message: `${destination}文件夹已经存在, 是否覆盖`,
-              name: "isCover",
-              default: true,
-              choices: [{ name: "覆盖", value: true }, { name: "不覆盖", value: false }]
-            }])
-            if (!isCover) {
-              return;
-            } else {
-              await remove(destination)
-            }
-          }
+          // 处理目录已有情况
+          await handleExistDestination({ destination });
 
-          // 如果目标文件夹不存在，创建它
-          if (!fs.existsSync(lastDestination)) {
-            try {
-              import("ora").then((ora) => {
-                spinner = ora.default("正在拉取").start();
-                // 使用 spinner 继续你的逻辑
-              });
-              import("chalk").then((chalk) => {
-                chalk = chalk.default;
-              })
-              fs.mkdirSync(destination, { recursive: true });
-              if (answers.isRemote === "local") {
-                source = path.join(__dirname, local_template?.[answers?.index])
-                copy(source, lastDestination, {
-                  filter: (src, dest) => {
-                    // 复制所有文件（包括 . 开头的文件）
-                    return true;
-                  },
-                })
-                  .then(() => {
-                    console.log(err, chalk.red("拉取成功"));
-                    // spinner.succeed("拉取成功");
-                  })
-                  .catch((err) => {
-                    console.log(err);
-                  });
+          // 目录不存在新建目录
+          await createDestination({ destination, answers });
 
-              } else {
-                download(remote_template?.[answers?.index], destination, { clone: true }, (err) => {
-                  if (err) {
-                    console.error(err);
-                    spinner.error("拉取失败")
-                  } else {
-                    console.log(err, chalk.red("拉取成功"));
-                    // spinner.succeed('拉取成功');
-                  }
-                });
-              }
-
-            } catch (error) {
-              console.log(error);
-            }
-          }
-
-          if (answers.isInstall) {
-            const installType = answers.installType;
-            // 使用 shelljs 进入文件夹并执行命令
-            if (shell.cd(destination).code === 0) {
-              // 如果进入文件夹成功，执行其他命令
-              shell.exec(`${installType} install`, (code, stdout, stderr) => {
-                if (code === 0) {
-                  console.log('安装成功:', stdout);
-                } else {
-                  console.error('安装失败:', stderr);
-                }
-              });
-            } else {
-              console.error('无法进入文件夹:', folderPath);
-            }
-          }
+          // 是否安装依赖
+          await installDependice({ destination, answers });
         })
         .catch((err) => {
           console.log(err);

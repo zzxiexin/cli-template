@@ -1,11 +1,19 @@
 {
   "name": "local-cli",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "快速创建项目脚手架",
+  "engines": {
+    "node": ">=18.17.1",
+    "pnpm": ">=9.8.0"
+  },
   "bin": {
     "local-cli": "bin/index.js"
   },
+  "files": [
+    "bin/",
+    "template/",
+    "readme.md"
+  ],
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
