@@ -1,7 +1,7 @@
 const { program } = require("commander");
 const inquirer = require("inquirer").default;
 const { copy, remove } = require("fs-extra");
-const { local_template, remote_template } = require("./template");
+const { local_template, remote_template, library_template } = require("./template");
 const fs = require("fs");
 const path = require("path");
 const shell = require("shelljs");
@@ -66,8 +66,14 @@ const createDestination = async ({ destination, answers }) => {
         }
       } else {
         try {
+          let remote_url = ""
+          if (answers?.index === 6){
+            remote_url = library_template?.[0]
+          } else {
+            remote_url = remote_template?.[answers?.index]
+          }
           download(
-            remote_template?.[answers?.index],
+            remote_url,
             finalDestination,
             { clone: true },
             (err) => {
@@ -89,12 +95,12 @@ const createDestination = async ({ destination, answers }) => {
 };
 
 const installDependice = async ({ answers, destination }) => {
-  const finalDestination = path.join(process.cwd(), destination);
   if (answers.isInstall) {
     const installType = answers.installType;
     // 使用 shelljs 进入文件夹并执行命令
-    if (shell.cd(finalDestination).code === 0) {
+    if (shell.cd(destination).code === 0) {
       // 如果进入文件夹成功，执行其他命令
+      console.log(installType)
       shell.exec(`${installType} install`, (code, stdout, stderr) => {
         if (code === 0) {
           console.log("安装成功:", stdout);
@@ -103,7 +109,7 @@ const installDependice = async ({ answers, destination }) => {
         }
       });
     } else {
-      console.error("无法进入文件夹:", finalDestination);
+      console.error("无法进入文件夹:", destination);
     }
   }
 };
@@ -123,7 +129,12 @@ const create = async () => {
             message: "请选择你需要的技术栈",
             choices: [
               { name: "react+router+vite+jotai", value: 0 },
-              { name: "test", value: 1 },
+              { name: "react+router+vite+mobx", value: 1 },
+              { name: "react+router+vite+rtk", value: 2 },
+              { name: "react+router+vite+useContext", value: 3 },
+              { name: "react+router+vite+useReducer", value: 4 },
+              { name: "react+router+vite+zustand", value: 5 },
+              { name: "react library", value: 6 },
             ],
           },
           {
